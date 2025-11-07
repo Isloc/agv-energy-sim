@@ -1,0 +1,992 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Simulador AGV 3D — Three.js</title>
+  <style>
+    :root{
+      --bg:#f7fbff;
+      --card:#fff;
+      --accent:#2563eb;
+      --accent-2:#06b6d4;
+      --muted:#64748b;
+      --glass: rgba(255,255,255,0.85);
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: linear-gradient(180deg,#0f172a 0%, #1e293b 100%);
+      color:#f1f5f9;
+      overflow-x:hidden;
+    }
+    header{padding:20px 26px;border-bottom:1px solid rgba(241,245,249,0.1);background:rgba(15,23,42,0.8)}
+    h1{margin:0;font-size:24px;color:#fff}
+    .subtitle{margin-top:6px;color:#94a3b8;font-size:14px}
+    
+    .layout{display:grid;grid-template-columns:320px 1fr 360px;gap:18px;padding:18px;align-items:start}
+    .panel{background:rgba(30,41,59,0.9);border-radius:12px;padding:14px;box-shadow:0 6px 20px rgba(0,0,0,0.3);border:1px solid rgba(148,163,184,0.1)}
+    .card{background:rgba(51,65,85,0.6);padding:12px;border-radius:8px;margin-bottom:12px;border:1px solid rgba(148,163,184,0.1)}
+    .card h3{margin:0 0 10px;font-size:15px;color:#60a5fa}
+    
+    label{display:block;margin:8px 0 4px;font-size:13px;color:#e2e8f0}
+    input[type=number]{width:120px;padding:6px 8px;border-radius:6px;border:1px solid rgba(148,163,184,0.2);background:rgba(15,23,42,0.5);color:#f1f5f9;font-size:13px}
+    input[type=range]{width:100%;accent-color:#2563eb}
+    input:disabled{opacity:0.5;cursor:not-allowed}
+    
+    .pkgRow{display:flex;gap:8px;margin-bottom:8px}
+    .panel-actions{display:flex;gap:8px;margin-top:12px}
+    button{cursor:pointer;padding:10px 16px;border-radius:8px;border:0;font-weight:600;font-size:14px;transition:all 0.2s}
+    .primary{background:#2563eb;color:#fff}
+    .primary:hover:not(:disabled){background:#1d4ed8;transform:translateY(-1px)}
+    .primary:disabled{background:#475569;cursor:not-allowed;transform:none}
+    .muted{background:rgba(71,85,105,0.5);color:#cbd5e1;border:1px solid rgba(148,163,184,0.2)}
+    .muted:hover{background:rgba(71,85,105,0.7)}
+    
+    .panel-left{min-height:520px}
+    .panel-right{min-height:520px;max-height:85vh;overflow-y:auto}
+    .panel-center{min-height:600px;position:relative}
+    
+    #canvas3d{width:100%;height:600px;border-radius:10px;display:block;background:linear-gradient(180deg,#0f172a,#1e3a5f);cursor:grab}
+    #canvas3d:active{cursor:grabbing}
+    
+    .animInfo{margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px}
+    .animInfo > div{background:rgba(51,65,85,0.4);padding:8px 10px;border-radius:6px;border:1px solid rgba(148,163,184,0.1)}
+    .animInfo strong{color:#60a5fa;display:block;margin-bottom:4px}
+    .animInfo span{color:#e2e8f0}
+    
+    table{width:100%;border-collapse:collapse;font-size:12px}
+    table th{background:rgba(59,130,246,0.1);padding:6px;text-align:left;color:#93c5fd;font-weight:600}
+    table td{padding:6px;border-top:1px solid rgba(148,163,184,0.1);color:#e2e8f0}
+    table tfoot td{font-weight:700;background:rgba(251,146,60,0.1);color:#fdba74}
+    
+    .badge{display:inline-block;padding:3px 8px;border-radius:999px;background:#1e40af;color:#bfdbfe;font-weight:700;font-size:11px}
+    
+    .note{margin-top:10px;color:#94a3b8;font-size:12px;line-height:1.5}
+    
+    footer{text-align:center;padding:16px;color:#64748b;font-size:12px;margin-top:12px}
+    
+    @media (max-width:1100px){
+      .layout{grid-template-columns: 1fr; padding:12px}
+      .panel-center{order:1}
+      .panel-left{order:2}
+      .panel-right{order:3}
+      #canvas3d{height:400px}
+    }
+
+    .result-value{color:#60a5fa;font-weight:600}
+    
+    ::-webkit-scrollbar{width:8px}
+    ::-webkit-scrollbar-track{background:rgba(15,23,42,0.5)}
+    ::-webkit-scrollbar-thumb{background:rgba(148,163,184,0.3);border-radius:4px}
+    ::-webkit-scrollbar-thumb:hover{background:rgba(148,163,184,0.5)}
+
+    .route-info{background:rgba(59,130,246,0.1);padding:10px;border-radius:6px;margin-bottom:12px;border-left:3px solid #2563eb}
+    .route-info p{margin:4px 0;font-size:13px}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🤖 Simulador AGV 3D — Optimización de Ruta</h1>
+    <p class="subtitle">Calcula la ruta óptima para minimizar el consumo energético</p>
+  </header>
+
+  <div id="root"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+const g = 9.81;
+
+function calcElevatorEnergy(params){
+  const motor = params.elevator_power * params.elevator_time;
+  const standby = params.standby_power * params.elevator_time;
+  return (motor + standby) / 3600 / 1000;
+}
+
+function calcPhysics(m, params){
+  const friction = params.friction_coeff * m * g;
+  const tractionAccel = m * params.max_acceleration + friction;
+  const tractionConst = friction;
+  const powerAccel = tractionAccel * params.max_velocity;
+  const powerConst = tractionConst * params.max_velocity;
+  return { friction, tractionAccel, tractionConst, powerAccel, powerConst };
+}
+
+function calcSegment(dist, m, params){
+  const accelDist = (params.max_velocity ** 2) / (2 * params.max_acceleration);
+  const brakeDist = accelDist;
+  let accelTime, cruiseTime, brakeTime, cruiseDist;
+  if (dist <= accelDist + brakeDist){
+    const reachedV = Math.sqrt(params.max_acceleration * dist);
+    accelTime = reachedV / params.max_acceleration;
+    brakeTime = accelTime;
+    cruiseTime = 0; cruiseDist = 0;
+  } else {
+    accelTime = params.max_velocity / params.max_acceleration;
+    brakeTime = accelTime;
+    cruiseDist = dist - accelDist - brakeDist;
+    cruiseTime = cruiseDist / params.max_velocity;
+  }
+  const totalTime = accelTime + cruiseTime + brakeTime;
+  const phys = calcPhysics(m, params);
+  const e_accel = (phys.tractionAccel * accelDist) / params.propulsion_efficiency / 1000 / 3600;
+  const e_cruise = (phys.tractionConst * (cruiseDist||0)) / params.propulsion_efficiency / 1000 / 3600;
+  const e_brake = (phys.tractionConst * brakeDist) / params.propulsion_efficiency / 1000 / 3600;
+  const e_standby = (params.standby_power / 1000) * (totalTime / 3600);
+  return { totalTime, accelTime, cruiseTime, brakeTime, e_accel, e_cruise, e_brake, e_standby };
+}
+
+function permutations(arr){
+  if(arr.length<=1) return [arr];
+  const out=[];
+  for(let i=0;i<arr.length;i++){
+    const rest = arr.slice(0,i).concat(arr.slice(i+1));
+    for(const p of permutations(rest)) out.push([arr[i],...p]);
+  }
+  return out;
+}
+
+function Scene3D({ routePoints, robotPos, boxes, liftingBox, carried  }){
+  const carriedBoxesRef = useRef([]); // cajas que el robot ya levantó
+  const carriedMeshesRef = useRef([]);
+  const mountRef = useRef(null);
+  const sceneRef = useRef(null);
+  const robotRef = useRef(null);
+  const boxMeshesRef = useRef([]);
+  const cameraRef = useRef(null);
+  const controlsRef = useRef({ isDragging: false, prevMouse: { x: 0, y: 0 }, rotation: { y: 0 } });
+
+  useEffect(() => {
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.Fog(0x0f172a, 80, 250);
+    sceneRef.current = scene;
+
+    const camera = new THREE.PerspectiveCamera(50, mountRef.current.clientWidth / mountRef.current.clientHeight, 0.1, 1000);
+    camera.position.set(0, 70, 90);
+    camera.lookAt(0, 0, 0);
+    cameraRef.current = camera;
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(mountRef.current.clientWidth, mountRef.current.clientHeight);
+    renderer.setClearColor(0x0f172a, 1);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    mountRef.current.appendChild(renderer.domElement);
+
+    const canvas = renderer.domElement;
+    canvas.addEventListener('mousedown', (e) => {
+      controlsRef.current.isDragging = true;
+      controlsRef.current.prevMouse = { x: e.clientX, y: e.clientY };
+    });
+    canvas.addEventListener('mousemove', (e) => {
+      if (!controlsRef.current.isDragging) return;
+      const deltaX = e.clientX - controlsRef.current.prevMouse.x;
+      controlsRef.current.rotation.y += deltaX * 0.005;
+      controlsRef.current.prevMouse = { x: e.clientX, y: e.clientY };
+    });
+    canvas.addEventListener('mouseup', () => {
+      controlsRef.current.isDragging = false;
+    });
+    canvas.addEventListener('mouseleave', () => {
+      controlsRef.current.isDragging = false;
+    });
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight.position.set(40, 60, 30);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = 2048;
+    dirLight.shadow.mapSize.height = 2048;
+    dirLight.shadow.camera.left = -80;
+    dirLight.shadow.camera.right = 80;
+    dirLight.shadow.camera.top = 80;
+    dirLight.shadow.camera.bottom = -80;
+    scene.add(dirLight);
+
+    const pointLight = new THREE.PointLight(0x60a5fa, 0.5, 150);
+    pointLight.position.set(0, 30, 0);
+    scene.add(pointLight);
+
+    const floorGeo = new THREE.PlaneGeometry(150, 150);
+    const floorMat = new THREE.MeshStandardMaterial({ 
+      color: 0x1e293b, 
+      roughness: 0.9,
+      metalness: 0.1
+    });
+    const floor = new THREE.Mesh(floorGeo, floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    const gridHelper = new THREE.GridHelper(150, 30, 0x334155, 0x1e293b);
+    gridHelper.position.y = 0.02;
+    scene.add(gridHelper);
+
+    const baseGeo = new THREE.CylinderGeometry(2.5, 3, 1.5, 16);
+    const baseMat = new THREE.MeshStandardMaterial({ 
+      color: 0x10b981, 
+      emissive: 0x10b981, 
+      emissiveIntensity: 0.4,
+      roughness: 0.3,
+      metalness: 0.6
+    });
+    const baseMesh = new THREE.Mesh(baseGeo, baseMat);
+    baseMesh.position.set(0, 0.75, 0);
+    baseMesh.castShadow = true;
+    scene.add(baseMesh);
+
+    const baseRing = new THREE.Mesh(
+      new THREE.RingGeometry(3, 3.5, 32),
+      new THREE.MeshBasicMaterial({ color: 0x10b981, side: THREE.DoubleSide })
+    );
+    baseRing.rotation.x = -Math.PI / 2;
+    baseRing.position.y = 0.1;
+    scene.add(baseRing);
+
+    const robotGroup = new THREE.Group();
+    
+    const bodyGeo = new THREE.BoxGeometry(3, 2, 3.5);
+    const bodyMat = new THREE.MeshStandardMaterial({ 
+      color: 0x2563eb, 
+      roughness: 0.3, 
+      metalness: 0.8 
+    });
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    body.castShadow = true;
+    robotGroup.add(body);
+
+    const cabinGeo = new THREE.BoxGeometry(2, 1.2, 2);
+    const cabinMat = new THREE.MeshStandardMaterial({ 
+      color: 0x1e40af, 
+      roughness: 0.2, 
+      metalness: 0.9 
+    });
+    const cabin = new THREE.Mesh(cabinGeo, cabinMat);
+    cabin.position.y = 1.6;
+    cabin.castShadow = true;
+    robotGroup.add(cabin);
+
+    const wheelGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.4, 16);
+    const wheelMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.8 });
+    const wheelPositions = [
+      [-1.3, -1, 1.5], [1.3, -1, 1.5], 
+      [-1.3, -1, -1.5], [1.3, -1, -1.5]
+    ];
+    wheelPositions.forEach(pos => {
+      const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+      wheel.rotation.z = Math.PI / 2;
+      wheel.position.set(...pos);
+      wheel.castShadow = true;
+      robotGroup.add(wheel);
+    });
+
+    const antennaGeo = new THREE.CylinderGeometry(0.1, 0.1, 1.5, 8);
+    const antennaMat = new THREE.MeshStandardMaterial({ color: 0x64748b });
+    const antenna = new THREE.Mesh(antennaGeo, antennaMat);
+    antenna.position.y = 2.75;
+    robotGroup.add(antenna);
+
+    const lightGeo = new THREE.SphereGeometry(0.4, 16, 16);
+    const lightMat = new THREE.MeshStandardMaterial({ 
+      color: 0x60a5fa, 
+      emissive: 0x60a5fa, 
+      emissiveIntensity: 1 
+    });
+    const topLight = new THREE.Mesh(lightGeo, lightMat);
+    topLight.position.y = 3.5;
+    robotGroup.add(topLight);
+
+    robotGroup.position.set(0, 1, 0);
+    scene.add(robotGroup);
+    robotRef.current = robotGroup;
+
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      const rot = controlsRef.current.rotation.y;
+      const radius = 90;
+      camera.position.x = Math.sin(rot) * radius;
+      camera.position.z = Math.cos(rot) * radius;
+      camera.lookAt(0, 0, 0);
+      
+      if(robotRef.current){
+        const light = robotRef.current.children.find(c => c.geometry instanceof THREE.SphereGeometry);
+        if(light) light.rotation.y += 0.05;
+      }
+      // mantener las cajas transportadas sobre el robot
+      if (robotRef.current && carriedBoxesRef.current.length > 0) {
+        carriedBoxesRef.current.forEach((b, i) => {
+          b.position.set(0, 2.5 + i * 2.6, 0); // altura base + offset por caja
+        });
+      }
+
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    const handleResize = () => {
+      camera.aspect = mountRef.current.clientWidth / mountRef.current.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(mountRef.current.clientWidth, mountRef.current.clientHeight);
+    };
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      mountRef.current?.removeChild(renderer.domElement);
+    };
+  }, []);
+
+  useEffect(() => {
+  if (!sceneRef.current || !robotRef.current) return;
+
+  // eliminar meshes previos montados en robot
+  carriedMeshesRef.current.forEach(m => { if (m.parent) m.parent.remove(m); });
+  carriedMeshesRef.current = [];
+
+  carried.forEach((name, i) => {
+    const boxGeo = new THREE.BoxGeometry(2.5, 2.5, 2.5);
+    const boxMat = new THREE.MeshStandardMaterial({
+      color: 0xfbbf24,
+      roughness: 0.4,
+      metalness: 0.3
+    });
+    const boxMesh = new THREE.Mesh(boxGeo, boxMat);
+    boxMesh.castShadow = true;
+    boxMesh.receiveShadow = true;
+
+    // etiqueta (opcional)
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = 256; canvas.height = 256;
+    ctx.fillStyle = '#78350f'; ctx.fillRect(0,0,256,256);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 160px Arial'; ctx.textAlign = 'center'; ctx.textBaseline='middle';
+    ctx.fillText(name, 128, 128);
+    const texture = new THREE.CanvasTexture(canvas);
+    const labelMat = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
+    const labelGeo = new THREE.PlaneGeometry(2.2, 2.2);
+    const label = new THREE.Mesh(labelGeo, labelMat);
+    label.position.set(0, 0, 1.26);
+    boxMesh.add(label);
+
+    // posicionamiento relativo al robot (apilado)
+    const baseY = 2.5;            // altura base sobre el robot
+    const offsetY = baseY + i * 2.6;
+    boxMesh.position.set(0, offsetY, 0);
+
+    // parentar al robot
+    robotRef.current.add(boxMesh);
+    carriedMeshesRef.current.push(boxMesh);
+  });
+
+  // cleanup al desmontar o antes de re-ejecutar
+  return () => {
+    carriedMeshesRef.current.forEach(m => { if (m.parent) m.parent.remove(m); });
+    carriedMeshesRef.current = [];
+  };
+}, [carried]);
+
+
+  useEffect(() => {
+    if(!sceneRef.current) return;
+    
+    boxMeshesRef.current.forEach(mesh => sceneRef.current.remove(mesh));
+    boxMeshesRef.current = [];
+
+    boxes.forEach(box => {
+      const boxGroup = new THREE.Group();
+      
+      const boxGeo = new THREE.BoxGeometry(2.5, 2.5, 2.5);
+      const boxMat = new THREE.MeshStandardMaterial({ 
+        color: box.picked ? 0xfbbf24 : 0xef4444,
+        roughness: 0.4,
+        metalness: 0.3
+      });
+      const boxMesh = new THREE.Mesh(boxGeo, boxMat);
+      boxMesh.castShadow = true;
+      boxMesh.receiveShadow = true;
+      boxGroup.add(boxMesh);
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = 256;
+      canvas.height = 256;
+      ctx.fillStyle = box.picked ? '#78350f' : '#7f1d1d';
+      ctx.fillRect(0, 0, 256, 256);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 160px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(box.name, 128, 128);
+      
+      const texture = new THREE.CanvasTexture(canvas);
+      const labelMat = new THREE.MeshBasicMaterial({ map: texture });
+      const labelGeo = new THREE.PlaneGeometry(2.2, 2.2);
+      const label = new THREE.Mesh(labelGeo, labelMat);
+      label.position.set(0, 0, 1.26);
+      boxGroup.add(label);
+
+      const liftHeight = (liftingBox === box.name) ? 3 : 0;
+      boxGroup.position.set(box.x, 1.25 + liftHeight, box.y);
+      
+      boxGroup.userData = { name: box.name };
+      if (box.picked) {
+  // si ya fue recogido, no se agrega al suelo
+  return;
+}
+
+      sceneRef.current.add(boxGroup);
+      boxMeshesRef.current.push(boxGroup);
+    });
+  }, [boxes, liftingBox]);
+
+  useEffect(() => {
+    if(robotRef.current){
+      robotRef.current.position.x = robotPos.x;
+      robotRef.current.position.z = robotPos.y;
+    }
+  }, [robotPos]);
+
+  useEffect(() => {
+    if(robotRef.current && routePoints.length > 0){
+      const currentIndex = routePoints.findIndex(p => 
+        Math.abs(p.x - robotPos.x) < 0.5 && Math.abs(p.y - robotPos.y) < 0.5
+      );
+      if(currentIndex >= 0 && currentIndex < routePoints.length - 1){
+        const next = routePoints[currentIndex + 1];
+        const dx = next.x - robotPos.x;
+        const dy = next.y - robotPos.y;
+        if(dx !== 0 || dy !== 0){
+          robotRef.current.rotation.y = Math.atan2(dx, dy);
+        }
+      }
+    }
+  }, [robotPos, routePoints]);
+
+  return <div ref={mountRef} id="canvas3d" />;
+}
+
+function Controls({ params, setParams, onStart, onReset, speedScale, setSpeedScale, isAnimating }){
+  function update(k, v){ setParams(prev => ({...prev, [k]: Number(v)})); }
+  
+  return (
+    <aside className="panel panel-left">
+      <h2 style={{marginBottom:16,fontSize:18}}>⚙️ Configuración</h2>
+
+      <div className="card">
+        <h3>Robot</h3>
+        <label>Masa robot (kg) <input type="number" value={params.mass_robot} onChange={e=>update('mass_robot', e.target.value)} disabled={isAnimating} /></label>
+        <label>Masa paquete (kg) <input type="number" value={params.mass_package} onChange={e=>update('mass_package', e.target.value)} disabled={isAnimating} /></label>
+        <label>Velocidad máx (m/s) <input type="number" step="0.1" value={params.max_velocity} onChange={e=>update('max_velocity', e.target.value)} disabled={isAnimating} /></label>
+        <label>Aceleración máx (m/s²) <input type="number" step="0.1" value={params.max_acceleration} onChange={e=>update('max_acceleration', e.target.value)} disabled={isAnimating} /></label>
+      </div>
+
+      <div className="card">
+        <h3>Física</h3>
+        <label>Coef. fricción <input type="number" step="0.01" value={params.friction_coeff} onChange={e=>update('friction_coeff', e.target.value)} disabled={isAnimating} /></label>
+        <label>Potencia standby (W) <input type="number" value={params.standby_power} onChange={e=>update('standby_power', e.target.value)} disabled={isAnimating} /></label>
+        <label>Eficiencia propulsión <input type="number" step="0.01" value={params.propulsion_efficiency} onChange={e=>update('propulsion_efficiency', e.target.value)} disabled={isAnimating} /></label>
+      </div>
+
+      <div className="card">
+        <h3>Elevador</h3>
+        <label>Potencia (W) <input type="number" value={params.elevator_power} onChange={e=>update('elevator_power', e.target.value)} disabled={isAnimating} /></label>
+        <label>Tiempo elevación (s) <input type="number" value={params.elevator_time} onChange={e=>update('elevator_time', e.target.value)} disabled={isAnimating} /></label>
+        <label>Batería (kWh) <input type="number" step="0.1" value={params.battery_energy} onChange={e=>update('battery_energy', e.target.value)} disabled={isAnimating} /></label>
+      </div>
+
+      <div className="card">
+  <h3>📦 Posiciones de Paquetes</h3>
+  {params.packages.map((pkg, i) => (
+    <div key={pkg.name} className="pkgRow">
+      <label>{pkg.name} x
+        <input
+          type="number"
+          value={pkg.x}
+          onChange={e => {
+            const val = Number(e.target.value);
+            setParams(prev => {
+              const pkgs = [...prev.packages];
+              pkgs[i] = { ...pkgs[i], x: val };
+              return { ...prev, packages: pkgs };
+            });
+          }}
+          disabled={isAnimating}
+        />
+      </label>
+      <label>{pkg.name} y
+        <input
+          type="number"
+          value={pkg.y}
+          onChange={e => {
+            const val = Number(e.target.value);
+            setParams(prev => {
+              const pkgs = [...prev.packages];
+              pkgs[i] = { ...pkgs[i], y: val };
+              return { ...prev, packages: pkgs };
+            });
+          }}
+          disabled={isAnimating}
+        />
+      </label>
+    </div>
+  ))}
+
+  <button
+    className="muted"
+    style={{ marginTop: 8 }}
+    disabled={isAnimating || params.packages.length >= 6}
+    onClick={() => {
+      setParams(prev => {
+        const nextLetter = String.fromCharCode(65 + prev.packages.length);
+        const newPkg = { name: nextLetter, x: 0, y: 0 };
+        return { ...prev, packages: [...prev.packages, newPkg] };
+      });
+    }}
+  >
+    ➕ Agregar paquete
+  </button>
+</div>
+
+
+      <div className="panel-actions">
+        <button className="primary" onClick={onStart} disabled={isAnimating}>
+          {isAnimating ? '⏳ Simulando...' : '🚀 Iniciar Simulación'}
+        </button>
+        <button className="muted" onClick={onReset}>🔄 Reiniciar</button>
+      </div>
+
+      <div style={{marginTop:12}}>
+        <label>Velocidad animación <input type="range" min="0.1" max="1.5" step="0.1" value={speedScale} onChange={e=>setSpeedScale(Number(e.target.value))} disabled={isAnimating} /></label>
+        <div style={{fontSize:12,color:'#94a3b8',marginTop:6}}>Escala: <span className="badge">{speedScale.toFixed(1)}×</span></div>
+      </div>
+
+      <div className="note">
+        💡 El simulador calcula automáticamente la ruta óptima que minimiza el consumo energético visitando todos los paquetes.
+      </div>
+    </aside>
+  );
+}
+
+function ResultsPanel({ plan, params }){
+  if(!plan) return (
+    <aside className="panel panel-right">
+      <h2 style={{marginBottom:16,fontSize:18}}>📊 Resultados</h2>
+      <div className="card" style={{textAlign:'center',padding:30,color:'#94a3b8'}}>
+        <p>Inicia la simulación para ver los resultados del análisis energético</p>
+      </div>
+    </aside>
+  );
+
+  const totalWh = plan.totalEnergy*1000;
+  const batteryUsed = (plan.totalEnergy / params.battery_energy) * 100;
+  const batteryRemaining = params.battery_energy - plan.totalEnergy;
+
+  return (
+    <aside className="panel panel-right">
+      <h2 style={{marginBottom:16,fontSize:18}}>📊 Resultados</h2>
+
+      <div className="route-info">
+        <p style={{fontWeight:600,color:'#60a5fa',marginBottom:8}}>🎯 Ruta Óptima Calculada</p>
+        <p style={{fontSize:13}}>Base → {plan.routeOrder.join(' → ')} → Base</p>
+        <p style={{fontSize:12,marginTop:8,color:'#94a3b8'}}>Esta ruta minimiza el consumo total de energía</p>
+      </div>
+
+      <div className="card">
+        <h3>Consumo Energético</h3>
+        <p style={{marginBottom:8,fontSize:13}}><strong>Energía consumida:</strong> <span className="result-value">{totalWh.toFixed(2)} Wh</span> <span style={{color:'#94a3b8'}}>({plan.totalEnergy.toFixed(5)} kWh)</span></p>
+        <p style={{marginBottom:8,fontSize:13}}><strong>Batería utilizada:</strong> <span className="result-value">{batteryUsed.toFixed(2)}%</span></p>
+        <p style={{fontSize:13}}><strong>Batería restante:</strong> <span className="result-value" style={{color: batteryRemaining > 0.3 ? '#10b981' : '#ef4444'}}>{(batteryRemaining * 1000).toFixed(2)} Wh</span> <span style={{color:'#94a3b8'}}>({(100 - batteryUsed).toFixed(2)}%)</span></p>
+      </div>
+
+      <div className="card">
+        <h3>Desglose por Tramo</h3>
+        <div>
+          <table>
+            <thead><tr><th>Tramo</th><th>Dist (m)</th><th>Tiempo (s)</th><th>Energía (Wh)</th></tr></thead>
+            <tbody>
+              {plan.segments.map((s, i)=>(
+                <tr key={i}>
+                  <td>{s.from} → {s.to}</td>
+                  <td>{s.dist.toFixed(2)}</td>
+                  <td>{s.time.toFixed(2)}</td>
+                  <td>{(s.e_total*1000).toFixed(2)}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td><b>TOTAL</b></td>
+                <td><b>{plan.segments.reduce((a,s)=>a+s.dist,0).toFixed(2)}</b></td>
+                <td><b>{plan.segments.reduce((a,s)=>a+s.time,0).toFixed(2)}</b></td>
+                <td><b>{totalWh.toFixed(2)}</b></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      <div className="card">
+  <h3>Parámetros Físicos</h3>
+  {(() => {
+    const m_empty = params.mass_robot;
+    const m_one = params.mass_robot + params.mass_package;
+    const m_max = params.mass_robot + params.mass_package * params.packages.length;
+
+    const physEmpty = calcPhysics(m_empty, params);
+    const physOne = calcPhysics(m_one, params);
+    const physMax = calcPhysics(m_max, params);
+    const elevE = calcElevatorEnergy(params);
+
+    return (
+      <div style={{fontSize:12,lineHeight:1.6}}>
+        <p style={{fontWeight:700}}>Valores (sin carga / con 1 paquete / con carga máxima)</p>
+        <p>Fricción: <span className="result-value">{physEmpty.friction.toFixed(2)}</span> N  / <span className="result-value">{physOne.friction.toFixed(2)}</span> N  / <span className="result-value">{physMax.friction.toFixed(2)}</span> N</p>
+        <p>Tracción (aceleración): <span className="result-value">{physEmpty.tractionAccel.toFixed(2)}</span> N  / <span className="result-value">{physOne.tractionAccel.toFixed(2)}</span> N  / <span className="result-value">{physMax.tractionAccel.toFixed(2)}</span> N</p>
+        <p>Potencia crucero (estimada): <span className="result-value">{physEmpty.powerConst.toFixed(2)}</span> W  / <span className="result-value">{physOne.powerConst.toFixed(2)}</span> W  / <span className="result-value">{physMax.powerConst.toFixed(2)}</span> W</p>
+        <p>Energía por elevación (por elevación): <span className="result-value">{(elevE*1000).toFixed(2)}</span> Wh</p>
+        <p style={{color:'#94a3b8',marginTop:6,fontSize:12}}>
+          Nota: la fricción y la tracción cambian tramo a tramo porque la masa aumenta cuando el robot recoge paquetes.
+        </p>
+      </div>
+    );
+  })()}
+</div>
+    <div className="card" style={{marginTop: 14}}>
+  <h3>📌 Conclusión & Aplicación en la Industria</h3>
+  <p style={{fontSize:13, lineHeight:1.6, color:'#e2e8f0'}}>
+    Con base en la ruta óptima calculada, el AGV consumió un total de 
+    <strong style={{color:'#60a5fa'}}> {totalWh.toFixed(2)} Wh</strong> para recoger todos los paquetes.
+    Esto significa que, con una batería de <strong>{params.battery_energy} kWh</strong>, 
+    el robot podría completar aproximadamente:
+    <br/><br/>
+    <span className="result-value" style={{fontSize:15}}>
+      {(params.battery_energy / plan.totalEnergy).toFixed(1)} rutas completas por carga.
+    </span>
+    <br/><br/>
+    Si asumimos que cada ciclo toma 
+    <strong className="result-value">{plan.segments.reduce((a,s)=>a+s.time,0).toFixed(0)} s</strong>,
+    el AGV podría recoger en promedio:
+    <br/>
+    <span className="result-value" style={{fontSize:15}}>
+      {(3600 / (plan.segments.reduce((a,s)=>a+s.time,0))).toFixed(1)} paquetes / hora
+    </span>
+    <br/><br/>
+    💰 Considerando un costo eléctrico promedio de <strong>$0.12 USD/kWh</strong>,
+    cada ciclo tendría un costo aproximado de:
+    <br/>
+    <span className="result-value" style={{fontSize:15}}>
+      ${(plan.totalEnergy * 0.12).toFixed(4)} USD por misión
+    </span>
+    <br/>
+    o <strong>{((plan.totalEnergy * 0.12) * (3600 / (plan.segments.reduce((a,s)=>a+s.time,0)))).toFixed(4)} USD por paquete</strong>.
+  </p>
+  <p style={{fontSize:12, marginTop:10, color:'#94a3b8'}}>
+    🔍 <strong>Dato aplicado a la industria:</strong> Con estos valores, una empresa podría estimar
+    su costo operativo mensual multiplicando por la cantidad de ciclos diarios, 
+    e incluso simular diferentes distribuciones logísticas para reducir el consumo energético total.
+    Este tipo de análisis se utiliza en almacenes inteligentes como Amazon, DHL o Tesla 
+    para planificar rutas de AGVs y prolongar la vida útil de baterías.
+  </p>
+</div>
+
+    </aside>
+  );
+}
+
+function App(){
+  const [params, setParams] = useState({
+    mass_robot:300, mass_package:50, max_velocity:2, max_acceleration:0.5,
+    friction_coeff:0.07, standby_power:100,
+    elevator_power:1500, elevator_efficiency:0.9, elevator_time:3, elevator_height:1.5,
+    battery_energy:1.5, propulsion_efficiency:0.85,
+    packages: [
+  { name: "A", x: 20, y: 30 },
+  { name: "B", x: -25, y: 20 },
+  { name: "C", x: 15, y: -20 }
+]
+  });
+  
+  const [plan, setPlan] = useState(null);
+  const [routePoints, setRoutePoints] = useState([]);
+  const [robotPos, setRobotPos] = useState({x:0,y:0});
+  const [boxes, setBoxes] = useState([]);
+  const [carried, setCarried] = useState([]);
+  const [speedScale, setSpeedScale] = useState(1.0);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [currentLeg, setCurrentLeg] = useState('—');
+  const [progress, setProgress] = useState(0);
+  const [liftingBox, setLiftingBox] = useState(null);
+  const animRef = useRef({running:false});
+
+  useEffect(() => {
+  resetBoxes();
+}, [params.packages]);
+
+  
+  function resetBoxes(){
+    setBoxes(params.packages.map(p => ({...p, picked:false})));
+  setCarried([]);
+  }
+
+  async function prepareSimulation(){
+    const pkgs = params.packages.map(p => ({ ...p }));
+
+    
+    function dist(a,b){ return Math.hypot(b.x-a.x, b.y-a.y); }
+    const base = {name:'Base', x:0, y:0};
+    const perms = permutations([...Array(pkgs.length).keys()]);
+    let bestPerm = null, bestE = Infinity, bestSegs = null;
+    
+    for(const perm of perms){
+      let pos = base;
+      let mass = params.mass_robot;
+      let segs = [];
+      let totalE = 0;
+      
+      for(let i=0; i<perm.length; i++){
+        const pkg = pkgs[perm[i]];
+        const d = dist(pos, pkg);
+        const seg = calcSegment(d, mass, params);
+        const elevE = calcElevatorEnergy(params);
+        const segTotal = seg.e_accel + seg.e_cruise + seg.e_brake + seg.e_standby + elevE;
+        
+        segs.push({
+          from: pos.name, 
+          to: pkg.name, 
+          x: pkg.x, 
+          y: pkg.y, 
+          dist: d, 
+          time: seg.totalTime, 
+          e_accel: seg.e_accel, 
+          e_cruise: seg.e_cruise, 
+          e_brake: seg.e_brake, 
+          e_standby: seg.e_standby, 
+          e_elev: elevE, 
+          e_total: segTotal
+        });
+        
+        totalE += segTotal;
+        pos = pkg;
+        mass += params.mass_package;
+      }
+      
+      const dback = dist(pos, base);
+      const segBack = calcSegment(dback, mass, params);
+      const backTotal = segBack.e_accel + segBack.e_cruise + segBack.e_brake + segBack.e_standby;
+      
+      segs.push({
+        from: pos.name, 
+        to: 'Base', 
+        x: 0, 
+        y: 0, 
+        dist: dback, 
+        time: segBack.totalTime, 
+        e_accel: segBack.e_accel, 
+        e_cruise: segBack.e_cruise, 
+        e_brake: segBack.e_brake, 
+        e_standby: segBack.e_standby, 
+        e_elev: 0, 
+        e_total: backTotal
+      });
+      
+      totalE += backTotal;
+      
+      if(totalE < bestE){ 
+        bestE = totalE; 
+        bestPerm = perm; 
+        bestSegs = segs; 
+      }
+    }
+    
+    const routeOrder = bestPerm.map(idx => pkgs[idx].name);
+    
+    return {
+      packages: pkgs, 
+      segments: bestSegs, 
+      totalEnergy: bestE,
+      routeOrder: routeOrder
+    };
+  }
+
+  async function onStart() {
+    if (animRef.current.running) return;
+    
+    animRef.current.running = true;
+    setIsAnimating(true);
+    setProgress(0);
+    setCurrentLeg('Calculando ruta óptima...');
+
+    const planLocal = await prepareSimulation();
+    setPlan(planLocal);
+
+    const route = [{x:0, y:0}];
+    planLocal.segments.forEach(s => {
+      route.push({x: s.x, y: s.y});
+    });
+    setRoutePoints(route);
+
+    setRobotPos({x:0, y:0});
+    resetBoxes();
+
+    setTimeout(() => {
+      runSequence(planLocal);
+    }, 300);
+  }
+
+  function onReset(){
+    animRef.current.running = false;
+    setIsAnimating(false);
+    setPlan(null);
+    setRoutePoints([]);
+    setRobotPos({x:0, y:0});
+    resetBoxes();
+    setCurrentLeg('—');
+    setProgress(0);
+    setLiftingBox(null);
+    setCarried([]);
+  }
+
+  async function runSequence(planLocal){
+  const segments = planLocal.segments;
+  let currentPos = { x: 0, y: 0 }; // posición actual local
+
+  for(let i=0; i<segments.length; i++){
+    if(!animRef.current.running) break;
+    
+    const s = segments[i];
+    setCurrentLeg(`${s.from} → ${s.to} (${s.dist.toFixed(1)}m)`);
+
+    const startPos = { ...currentPos };
+    const targetPos = { x: s.x, y: s.y };
+    const moveDuration = 2000; // 2 segundos por tramo, independientemente del tiempo real
+    const steps = 60; // frames de animación
+    const delay = moveDuration / steps;
+
+    for(let step=0; step <= steps; step++){
+      if(!animRef.current.running) break;
+      const t = step / steps;
+      const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+      const newPos = {
+        x: startPos.x + (targetPos.x - startPos.x) * ease,
+        y: startPos.y + (targetPos.y - startPos.y) * ease
+      };
+      setRobotPos(newPos);
+      await new Promise(res => setTimeout(res, delay));
+    }
+
+    // actualizar posición final
+    currentPos = { ...targetPos };
+    setRobotPos(currentPos);
+
+    // recoger paquete si aplica
+    if(s.to !== 'Base'){
+      setCurrentLeg(`Recogiendo paquete ${s.to}...`);
+      setLiftingBox(s.to);
+      await new Promise(res => setTimeout(res, 800)); // 0.8 s elevación
+
+      // Marcar la caja como recogida visualmente
+setBoxes(prev => prev.map(b => 
+  b.name === s.to ? {...b, picked: true} : b
+));
+setLiftingBox(null);
+await new Promise(res => setTimeout(res, 300));
+
+// Buscar el mesh de esa caja en la escena y montarla sobre el robot
+// antiguo: acceso a sceneRef / robotRef (NO usar desde App)
+// -----------------------------------------------
+// if (sceneRef.current && robotRef.current) { ... }
+// -----------------------------------------------
+
+// nuevo: marca como recogida y añade a la lista carried (reactiva)
+setBoxes(prev => prev.map(b => b.name === s.to ? {...b, picked: true} : b));
+setLiftingBox(null);
+await new Promise(res => setTimeout(res, 300));
+
+// añadir nombre a la pila de la carga — Scene3D reaccionará y parentará la mesh
+setCarried(prev => [...prev, s.to]);
+
+
+    }
+
+    const prog = Math.round(((i + 1) / segments.length) * 100);
+    setProgress(prog);
+  }
+
+  setCurrentLeg('✅ Simulación completada');
+  setProgress(100);
+  animRef.current.running = false;
+  setIsAnimating(false);
+}
+
+
+  return (
+    <div>
+      <div className="layout">
+        <Controls 
+          params={params} 
+          setParams={setParams} 
+          onStart={onStart} 
+          onReset={onReset} 
+          speedScale={speedScale} 
+          setSpeedScale={setSpeedScale}
+          isAnimating={isAnimating}
+        />
+        
+        <div className="panel panel-center">
+          <h2 style={{marginBottom:12,fontSize:18}}>🗺️ Visualización 3D del Almacén</h2>
+          <Scene3D 
+
+            routePoints={routePoints} 
+            robotPos={robotPos} 
+            boxes={boxes}
+            liftingBox={liftingBox}
+            carried={carried}
+          />
+          
+          <div className="animInfo">
+            <div>
+              <strong>Estado</strong>
+              <span>{isAnimating ? '🟢 Simulando' : '⚪ Listo'}</span>
+            </div>
+            <div>
+              <strong>Tramo actual</strong>
+              <span>{currentLeg}</span>
+            </div>
+            <div>
+              <strong>Progreso</strong>
+              <span>{progress}%</span>
+            </div>
+            <div>
+              <strong>Paquetes recogidos</strong>
+              <span>{boxes.filter(b => b.picked).length} / {boxes.length}</span>
+            </div>
+          </div>
+          
+          <div className="note" style={{marginTop:12}}>
+            🖱️ Arrastra con el mouse para rotar la vista del almacén
+          </div>
+        </div>
+        
+        <ResultsPanel plan={plan} params={params} />
+      </div>
+      
+      <footer>
+        <p>Simulador AGV 3D • Optimización de rutas con algoritmo de permutaciones • Three.js + React</p>
+      </footer>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

@@ -1,0 +1,133 @@
+:root{
+  --bg:#f7fbff;
+  --card:#ffffff;
+  --accent:#2563eb;
+  --accent-2:#06b6d4;
+  --muted:#64748b;
+  --success:#10b981;
+  --glass: rgba(255,255,255,0.85);
+}
+
+*{box-sizing:border-box}
+
+
+
+body{
+  margin:0;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  background: linear-gradient(180deg,#f0f9ff 0%, #fbf7ff 100%);
+  color:#0f172a;
+}
+
+header{
+  padding:22px 28px;
+  border-bottom: 1px solid rgba(15,23,42,0.06);
+}
+h1{margin:0;font-size:28px}
+.subtitle{margin:6px 0 0;color:var(--muted)}
+
+.layout{
+  .layout{
+  display:grid;
+  grid-template-columns: 280px 1fr 360px 360px;
+  gap:18px;
+  padding:18px;
+  align-items:flex-start;
+  overflow: visible;
+}
+
+
+}
+
+.panel{
+  background:var(--glass);
+  border-radius:12px;
+  padding:14px;
+  box-shadow: 0 6px 20px rgba(15,23,42,0.06);
+  border:1px solid rgba(15,23,42,0.04);
+}
+
+/* ✅ Hace que el panel derecho se expanda y no tenga scroll interno */
+.panel-right {
+  min-height: auto !important;
+}
+
+
+.resultsCard {
+  padding-bottom: 24px;
+}
+
+<p style={{
+  background:'#fff7e6',
+  padding:'10px 12px',
+  borderRadius:'8px',
+  margin:'10px 0',
+  fontSize:'13px',
+  color:'#b45309',
+  border:'1px solid rgba(245,158,11,0.3)',
+  fontWeight:500,
+  textAlign:'center'
+}}>
+  🔎 ¿Sabías que estos datos tienen un enorme impacto en la vida real?
+  <br/>⬇ Sigue bajando para descubrir conclusiones y datos curiosos que te sorprenderán ⬇
+</p>
+
+
+
+.card{background:var(--card);padding:10px;border-radius:8px;margin-bottom:12px;box-shadow:0 3px 8px rgba(2,6,23,0.03)}
+.card h3{margin:0 0 8px;font-size:15px;color:var(--accent)}
+
+label{display:block;margin:6px 0;font-size:13px;color:#0f172a}
+input[type=number]{width:120px;padding:6px;border-radius:6px;border:1px solid #e6eef8;background:#fbfdff}
+
+.panel-left,
+.panel-center,
+.panel-right {
+  min-height: auto; /* ✅ Deja que el contenido defina la altura */
+}
+
+
+.canvasWrap{background:linear-gradient(180deg,#ffffff,#f3f8ff);padding:10px;border-radius:10px;border:1px dashed rgba(37,99,235,0.12);box-shadow: inset 0 1px 0 rgba(255,255,255,0.6)}
+#warehouseCanvas{background:linear-gradient(180deg,#eef7ff,#ffffff);border-radius:8px;display:block;width:100%;height:auto;border:1px solid rgba(2,6,23,0.04)}
+
+.panel-actions{display:flex;gap:8px;margin-top:10px}
+button{cursor:pointer;padding:10px 12px;border-radius:8px;border:0;font-weight:600}
+.primary{background:var(--accent);color:#fff}
+.muted{background:#f1f5f9;color:var(--muted);border:1px solid rgba(15,23,42,0.04)}
+
+.note{margin-top:12px;color:var(--muted);font-size:13px}
+
+.animInfo{margin-top:10px;display:flex;gap:18px;color:var(--muted);font-size:14px}
+
+.resultsCard{padding:10px 12px}
+
+#summary p{margin:8px 0;font-size:14px}
+#physics p{margin:6px 0;font-size:13px;color:#0f172a}
+
+.striped{width:100%;border-collapse:collapse;font-size:13px}
+.striped th{background:#eef2ff;padding:6px;text-align:left}
+.striped td{padding:6px;border-top:1px solid #f1f5f9}
+table tfoot td{font-weight:700;background:#fff6e8}
+
+#energyBars{display:flex;flex-direction:column;gap:8px}
+.energyRow{display:flex;align-items:center;gap:8px}
+.energyLabel{width:110px;font-size:13px}
+.energyBar{flex:1;background:#e6eef8;border-radius:8px;height:14px;position:relative}
+.energyFill{height:100%;border-radius:8px}
+
+footer{text-align:center;padding:12px;color:var(--muted);font-size:13px;margin-top:8px}
+@media (max-width:1100px){
+  .layout{grid-template-columns: 1fr; padding:12px}
+  .panel-center{order:2}
+  .panel-right{order:3}
+  .panel-left{order:1}
+}
+
+button.muted.addBtn {
+  background: rgba(37,99,235,0.15);
+  color: #60a5fa;
+  border: 1px dashed rgba(96,165,250,0.4);
+}
+button.muted.addBtn:hover {
+  background: rgba(37,99,235,0.25);
+}
